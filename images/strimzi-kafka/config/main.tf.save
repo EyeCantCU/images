@@ -1,0 +1,111 @@
+terraform {
+  required_providers {
+    apko = { source = "chainguard-dev/apko" }
+  }
+}
+
+// Create a dummy config that includes cassandra-4.0, so we can extract the actual cassandra version below.
+data "apko_config" "packages" {
+  config_contents = jsonencode({
+    contents = {
+      packages = [
+        "kafka",
+        "kafka_exporter",
+        "strimzi-kafka",
+        "tini",
+      ]
+    }
+  })
+}
+
+// Extract the cassandra version from the dummy config.
+locals {
+  // This finds the cassandra package in the dummy config, like "cassandra-4.0=4.0.12-r1"
+  cassandra_package     = [for p in data.apko_config.for-getting-cassandra-version.config.contents.packages : p if startswith(p, "cassandra-4.0=")][0]
+  kafka_full_version          = split("=", local.cassandra_package)[1] // This extracts the version, like "4.0.12-r1"
+  version_without_epoch = split("-", local.full_version)[0]      // This extracts the version without the epoch, like "4.0.12"
+}
+
+variable "extra_packages" {
+  description = "Additional packages to install."
+  type        = list(string)
+  default     = ["rstudio"]
+}
+
+variable "environment" {
+  default = {}
+}
+
+module "accts" {
+  source = "../../../tflib/accts"
+  run-as = 65532
+  uid    = 65532
+  gid    = 65532
+  name   = "rstudio-server"
+}
+
+output "config" {
+  value = jsonencode({
+    contents = {
+      packages = var.extra_packages
+    }
+    accounts = module.accts.block
+    environment = merge({
+      "CRAN" : "https://cloud.r-project.org"
+      "USER" : "rstudio-server"
+      "LANG" : "en_US.UTF-8"
+      "LANG_WHICH" : "en"
+      "LANG_WHERE" : "US"
+      "ENCODING" : "UTF-8"
+      "LANGUAGE" : "en_US.UTF-8"
+      "LC_CTYPE" : "en_US"
+      "TZ" : "UTC"
+    })
+    entrypoint = {
+      command = "/usr/bin/rserver"
+    }
+    paths = [{
+      path        = "/etc/R"
+      type        = "directory"
+      uid         = module.accts.uid
+      gid         = module.accts.gid
+      permissions = 509
+      recursive   = true
+      }, {
+      path        = "/etc/rstudio"
+      type        = "directory"
+      uid         = module.accts.uid
+      gid         = module.accts.gid
+      permissions = 509
+      recursive   = true
+      }, {
+      path        = "/usr/lib/R"
+      type        = "directory"
+      uid         = module.accts.uid
+      gid         = module.accts.gid
+      permissions = 509
+      recursive   = true
+      }, {
+      path        = "/usr/share/doc/R"
+      type        = "directory"
+      uid         = module.accts.uid
+      gid         = module.accts.gid
+      permissions = 509
+      recursive   = true
+      }, {
+      path        = "/var/run/rstudio-server"
+      type        = "directory"
+      uid         = module.accts.uid
+      gid         = module.accts.gid
+      permissions = 509
+      recursive   = true
+      }, {
+      path        = "/var/lib/rstudio-server"
+      type        = "directory"
+      uid         = module.accts.uid
+      gid         = module.accts.gid
+      permissions = 509
+      recursive   = true
+    }]
+  })
+}

@@ -1283,6 +1283,11 @@ module "step-issuer" {
   target_repository = "${var.target_repository}/step-issuer"
 }
 
+module "strimzi-kafka" {
+  source            = "./images/strimzi-kafka"
+  target_repository = "${var.target_repository}/strimzi-kafka"
+}
+
 module "stunnel" {
   source            = "./images/stunnel"
   target_repository = "${var.target_repository}/stunnel"
@@ -2496,6 +2501,10 @@ output "summary_step-cli" {
 
 output "summary_step-issuer" {
   value = module.step-issuer.summary
+}
+
+output "summary_strimzi-kafka" {
+  value = module.strimzi-kafka.summary
 }
 
 output "summary_stunnel" {
