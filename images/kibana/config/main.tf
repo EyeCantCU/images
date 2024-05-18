@@ -4,6 +4,11 @@ terraform {
   }
 }
 
+variable "archs" {
+  description = "The architectures to build for."
+  default     = ["aarch64", "x86_64"]
+}
+
 variable "extra_packages" {
   description = "The additional packages to install."
   default     = ["kibana", "tini", "bash", "busybox"]
@@ -36,6 +41,7 @@ module "accts" {
 
 output "config" {
   value = jsonencode({
+    archs = var.archs
     contents = {
       packages     = var.extra_packages
       repositories = var.extra_repositories
