@@ -1,14 +1,17 @@
 #!/bin/bash
 
 container_name="teleport-${RANDOM}"
-trap "docker rm -f ${container_name}" EXIT
+trap "docker logs ${container_name} && docker rm -f ${container_name}" EXIT
 
 # Function to generate the teleport.yaml configuration file
 generate_teleport_config() {
     echo "Generating teleport.yaml configuration file..."
-    docker run --name temp_teleport_container --entrypoint="teleport" $IMAGE_NAME configure --roles=proxy,auth > teleport.yaml
+    docker run --rm --entrypoint="teleport" $IMAGE_NAME configure --roles=proxy,auth > teleport.yaml
 
-    if [ -f teleport.yaml ]; then
+    chmod 777 /data
+    cp -r teleport.yaml /data/
+
+    if [ -f /data/teleport.yaml ]; then
         echo "teleport.yaml configuration file generated successfully."
     else
         echo "Failed to generate teleport.yaml configuration file."
@@ -20,7 +23,7 @@ generate_teleport_config() {
 start_teleport() {
     echo "Running the Teleport container with configuration file..."
     docker run -d --name $container_name -p $FREE_PORT:3080 \
-         -v $(pwd)/teleport.yaml:/etc/teleport/teleport.yaml \
+        -v /data:/etc/teleport \
         $IMAGE_NAME
 
     # Wait for the container to start
